@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { searchUbicaciones, calculatePrice, createTripRequest } from '@/lib/services'
+import { searchUbicaciones, calculatePrice } from '@/lib/services'
+import { abrirWhatsApp } from '@/lib/whatsapp'
 import { Ubicacion } from '@/types'
 
 interface TripRequestFormProps {
@@ -28,7 +29,6 @@ export default function TripRequestForm({ onBack }: TripRequestFormProps) {
   const [estimatedTime, setEstimatedTime] = useState<number | null>(null)
   
   const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Search origen
@@ -94,64 +94,45 @@ export default function TripRequestForm({ onBack }: TripRequestFormProps) {
     setError(null)
 
     try {
-      // Construir fecha/hora según el tipo de taxi
-      let tripDateTime = ''
+      // Preparar la hora de forma legible
+      let horaLegible = '';
       if (taxiType === 'colectivo' && horarioColectivo) {
-        // Para colectivo: mañana = 00:00, tarde = 12:00
-        const hour = horarioColectivo === 'mañana' ? '00:00' : '12:00'
-        tripDateTime = `${tripDate}T${hour}:00`
-      } else if (taxiType === 'privado') {
-        tripDateTime = `${tripDate}T${tripTime}:00`
+        horaLegible = horarioColectivo === 'mañana' ? 'Mañana (6:00 AM - 12:00 PM)' : 'Tarde (12:00 PM - 6:00 PM)';
+      } else if (taxiType === 'privado' && tripTime) {
+        horaLegible = tripTime;
       }
-      
-      await createTripRequest({
-        origen_id: selectedOrigen.id,
-        destino_id: selectedDestino.id,
-        taxi_type: taxiType,
-        cantidad_personas: cantidadPersonas,
-        trip_date: tripDateTime,
-        price: price,
-        distance_km: distance,
-        estimated_time_minutes: estimatedTime,
-        status: 'pending',
-        user_id: 'guest' // Para usuarios invitados
+
+      // Abrir WhatsApp con la información de la reserva
+      abrirWhatsApp({
+        tipo: 'reserva_taxi',
+        datos: {
+          nombre: 'Nuevo Cliente',
+          origen: selectedOrigen.nombre,
+          destino: selectedDestino.nombre,
+          fecha: new Date(tripDate).toLocaleDateString('es-ES', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          }),
+          hora: horaLegible,
+          pasajeros: cantidadPersonas,
+          tipoTaxi: taxiType === 'colectivo' ? 'Taxi Colectivo' : 'Taxi Privado',
+          precioEstimado: price ? `$${price} CUP` : 'Por calcular',
+          distancia: distance ? `${distance} km` : 'Por calcular',
+          tiempoEstimado: estimatedTime ? `${estimatedTime} minutos` : 'Por calcular'
+        }
       })
 
-      setSuccess(true)
+      // Resetear el formulario después de enviar
+      setTimeout(() => {
+        setLoading(false)
+      }, 1000)
     } catch (err) {
-      setError('Error al crear la solicitud. Por favor intenta de nuevo.')
+      setError('Error al enviar la solicitud. Por favor intenta de nuevo.')
       console.error(err)
-    } finally {
       setLoading(false)
     }
-  }
-
-  if (success) {
-    return (
-      <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
-        <div className="text-6xl mb-4">✅</div>
-        <h2 className="text-3xl font-bold text-gray-900 mb-4">
-          ¡Reserva Registrada!
-        </h2>
-        <p className="text-gray-600 mb-4 text-lg">
-          Tu viaje ha sido registrado exitosamente.
-        </p>
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-          <p className="text-sm text-blue-800">
-            <strong>Detalles del viaje:</strong><br/>
-            {selectedOrigen?.nombre} → {selectedDestino?.nombre}<br/>
-            {taxiType === 'colectivo' ? '🚕 Colectivo' : '🚗 Privado'} • {cantidadPersonas} {cantidadPersonas === 1 ? 'persona' : 'personas'}<br/>
-            💰 Precio estimado: ${price} CUP
-          </p>
-        </div>
-        <button
-          onClick={() => window.location.reload()}
-          className="bg-blue-600 text-white font-semibold py-3 px-8 rounded-lg hover:bg-blue-700 transition-all transform hover:scale-105"
-        >
-          Hacer otra reserva
-        </button>
-      </div>
-    )
   }
 
   return (
@@ -336,7 +317,14 @@ export default function TripRequestForm({ onBack }: TripRequestFormProps) {
                 </svg>
                 Procesando...
               </span>
-            ) : '✅ Confirmar Reserva'}
+            ) : (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                </svg>
+                Enviar por WhatsApp
+              </span>
+            )}
           </button>
         </form>
     </div>

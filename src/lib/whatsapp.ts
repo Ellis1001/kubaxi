@@ -1,0 +1,102 @@
+// Configuración para envío de WhatsApp
+const WHATSAPP_NUMBER = '5352375007'; // Sin el signo +
+
+interface WhatsAppMessage {
+  tipo: string;
+  datos: any;
+}
+
+export function abrirWhatsApp(mensaje: WhatsAppMessage) {
+  // Formatear el mensaje según el tipo
+  let textoMensaje = '';
+  
+  switch (mensaje.tipo) {
+    case 'reserva_taxi':
+      textoMensaje = formatearReservaTaxi(mensaje.datos);
+      break;
+    case 'excursion':
+      textoMensaje = formatearExcursion(mensaje.datos);
+      break;
+    case 'paquete':
+      textoMensaje = formatearPaquete(mensaje.datos);
+      break;
+    case 'personalizado':
+      textoMensaje = formatearPersonalizado(mensaje.datos);
+      break;
+    default:
+      textoMensaje = JSON.stringify(mensaje.datos, null, 2);
+  }
+
+  // Codificar el mensaje para URL
+  const mensajeCodificado = encodeURIComponent(textoMensaje);
+  
+  // Crear el enlace de WhatsApp
+  const urlWhatsApp = `https://wa.me/${WHATSAPP_NUMBER}?text=${mensajeCodificado}`;
+  
+  // Abrir WhatsApp en una nueva ventana
+  window.open(urlWhatsApp, '_blank');
+}
+
+function formatearReservaTaxi(datos: any): string {
+  return `🚕 *RESERVA DE TAXI - KUBAXI*
+
+🗺️ *Detalles del Viaje:*
+📍 Origen: ${datos.origen || 'N/A'}
+📍 Destino: ${datos.destino || 'N/A'}
+📅 Fecha: ${datos.fecha || 'N/A'}
+⏰ Hora: ${datos.hora || 'N/A'}
+👥 Pasajeros: ${datos.pasajeros || 'N/A'}
+
+`;
+}
+
+function formatearExcursion(datos: any): string {
+  return `🏝️ *RESERVA DE EXCURSIÓN - KUBAXI*
+
+📋 *Información del Cliente:*
+👤 Nombre: ${datos.nombre || 'N/A'}
+📧 Email: ${datos.email || 'N/A'}
+📱 Teléfono: ${datos.telefono || 'N/A'}
+
+🎯 *Detalles de la Excursión:*
+🏝️ Excursión: ${datos.excursion || 'N/A'}
+📅 Fecha: ${datos.fecha || 'N/A'}
+👥 Personas: ${datos.personas || 'N/A'}
+
+💬 *Comentarios:*
+${datos.comentarios || 'Sin comentarios'}`;
+}
+
+function formatearPaquete(datos: any): string {
+  return `📦 *RESERVA DE PAQUETE - KUBAXI*
+
+📋 *Información del Cliente:*
+👤 Nombre: ${datos.nombre || 'N/A'}
+📧 Email: ${datos.email || 'N/A'}
+📱 Teléfono: ${datos.telefono || 'N/A'}
+
+📦 *Detalles del Paquete:*
+🎁 Paquete: ${datos.paquete || 'N/A'}
+📅 Fecha: ${datos.fecha || 'N/A'}
+👥 Personas: ${datos.personas || 'N/A'}
+
+💬 *Comentarios:*
+${datos.comentarios || 'Sin comentarios'}`;
+}
+
+function formatearPersonalizado(datos: any): string {
+  return `✨ *SOLICITUD PERSONALIZADA - KUBAXI*
+
+📋 *Información del Cliente:*
+👤 Nombre: ${datos.nombre || 'N/A'}
+📧 Email: ${datos.email || 'N/A'}
+📱 Teléfono: ${datos.telefono || 'N/A'}
+👥 Viajeros: ${datos.viajeros || 'N/A'}
+
+🗓️ *Detalles del Viaje:*
+📅 Fecha: ${datos.fecha || 'N/A'}
+⏱️ Duración: ${datos.duracion || 'N/A'}
+
+📝 *Descripción:*
+${datos.descripcion || 'Sin descripción'}`;
+}
